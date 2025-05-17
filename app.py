@@ -27,7 +27,8 @@ if st.button("Generate Message"):
     - Their background: {their_summary}
     - My intention: {your_intent}
 
-    Make it warm, concise, and personalized.
+    Make it warm, concise, and personalized. 
+    Note: Avoid the use of "--".
     """
 
     headers = {
