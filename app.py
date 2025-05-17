@@ -1,12 +1,12 @@
 import streamlit as st
 import requests
 
-st.title("LinkedIn Outreach Message Generator")
+st.title("Email/Linkedin Outreach Message Generator")
 
 st.header("🧍‍♂️ Your Info")
 your_name = st.text_input("Your Full Name")
 your_role = st.text_input("Your Current Title & Company")
-outreach_type = st.selectbox("Outreach Type", ["Networking", "Referral"])
+outreach_type = st.selectbox("Outreach Type", ["Email", "Linkedin"])
 your_intent = st.text_area("Why you're reaching out (goal, interest)")
 
 st.header("👤 Target's Info")
@@ -17,18 +17,17 @@ admire_note = st.text_area("Anything you admire or want to reference")
 
 if st.button("Generate Message"):
     prompt = f"""
-    Write a 100-word LinkedIn outreach message.
+    Write a 100-word(hard limit) {outreach_type.lower()} outreach message.
 
     I am {your_name}, currently working as {your_role}. 
-    I’m reaching out to {their_name}, {their_role}, for {outreach_type.lower()}.
+    I’m reaching out to {their_name}, {their_role}.
 
     Context:
     - I admire: {admire_note}
     - Their background: {their_summary}
     - My intention: {your_intent}
 
-    Make it warm, concise, and personalized. 
-    Note: Avoid the use of "--".
+    Make it warm, concise, and personalized. Note: Avoid the use of "--".
     """
 
     headers = {
