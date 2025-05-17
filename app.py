@@ -32,7 +32,7 @@ if st.button("Generate Message"):
 
     headers = {
         "Authorization": f"Bearer {st.secrets['OPENROUTER_API_KEY']}",
-        "HTTP-Referer": "https://your-app-name.streamlit.app",  # Customize your app's deployed URL
+        "HTTP-Referer": "https://outreach.streamlit.app",
         "X-Title": "Outreach Generator"
     }
 
