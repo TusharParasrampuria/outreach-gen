@@ -64,7 +64,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 
 # Open the sheet
-sheet = client.open("StreamlitVisits").visits
+sheet = client.open("StreamlitVisits").sheet1
 
 # Track visitor
 if "visitor_id" not in st.session_state:
