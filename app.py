@@ -83,7 +83,3 @@ sheet.append_row([visitor_id, timestamp])
 # Count unique users
 unique_users = len(set(sheet.col_values(1))) - 1  # subtract header
 total_visits = len(sheet.col_values(1)) - 1
-
-# Display
-st.sidebar.markdown(f"🔁 Total Visits: **{total_visits}**")
-st.sidebar.markdown(f"🧍 Unique Users: **{unique_users}**")
