@@ -1,5 +1,10 @@
 import streamlit as st
 import requests
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+from datetime import datetime
+import uuid
+import json
 
 st.title("Email/Linkedin Outreach Message Generator")
 
@@ -50,3 +55,35 @@ if st.button("Generate Message"):
         st.success(message)
     except Exception as e:
         st.error("Something went wrong: " + str(e))
+
+
+# Load credentials
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+creds_dict = st.secrets.to_dict()
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
+
+# Open the sheet
+sheet = client.open("StreamlitVisits").visits
+
+# Track visitor
+if "visitor_id" not in st.session_state:
+    st.session_state.visitor_id = str(uuid.uuid4())
+
+visitor_id = st.session_state.visitor_id
+timestamp = datetime.utcnow().isoformat()
+
+# Check if this visitor already exists
+existing_ids = sheet.col_values(1)
+is_new_user = visitor_id not in existing_ids
+
+# Append visit
+sheet.append_row([visitor_id, timestamp])
+
+# Count unique users
+unique_users = len(set(sheet.col_values(1))) - 1  # subtract header
+total_visits = len(sheet.col_values(1)) - 1
+
+# Display
+st.sidebar.markdown(f"🔁 Total Visits: **{total_visits}**")
+st.sidebar.markdown(f"🧍 Unique Users: **{unique_users}**")
