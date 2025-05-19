@@ -2,7 +2,7 @@
 
 A simple, free tool to create personalized Email and LinkedIn outreach messages for networking or referrals.
 
-It also includes built-in **user visit tracking** using **Google Sheets as a backend** — allowing you to see total visits and unique users across sessions.
+It also includes built-in **user visit tracking** using **Google Sheets as a backend**, allowing you to see total visits and unique users across sessions.
 
 ## 🚀 How to Run
 
