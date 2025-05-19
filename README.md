@@ -1,4 +1,4 @@
-# LinkedIn Outreach Generator
+# Email\LinkedIn Outreach Generator
 
 A simple, free tool to create personalized Email and LinkedIn outreach messages for networking or referrals.
 
