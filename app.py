@@ -1,28 +1,36 @@
 import streamlit as st
 import requests
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-from datetime import datetime
 import uuid
-import json
+from datetime import datetime
+from oauth2client.service_account import ServiceAccountCredentials
 
-st.title("Email/Linkedin Outreach Message Generator")
+st.title("Email/LinkedIn Outreach Message Generator")
 
-st.header("🧍‍♂️ Your Info")
-your_name = st.text_input("Your Full Name")
-your_role = st.text_input("Your Current Title & Company")
-outreach_type = st.selectbox("Outreach Type", ["Email", "Linkedin"])
-your_intent = st.text_area("Why you're reaching out (goal, interest)")
+# ----------------------------
+# Input Form
+# ----------------------------
+with st.form("input_form"):
+    st.header("🧍‍♂️ Your Info")
+    your_name = st.text_input("Your Full Name")
+    your_role = st.text_input("Your Current Title & Company")
+    outreach_type = st.selectbox("Outreach Type", ["Email", "LinkedIn"])
+    your_intent = st.text_area("Why you're reaching out (goal, interest)")
 
-st.header("👤 Target's Info")
-their_name = st.text_input("Their Full Name")
-their_role = st.text_input("Their Title & Company")
-their_summary = st.text_area("One-sentence summary of their profile or background")
-admire_note = st.text_area("Anything you admire or want to reference")
+    st.header("👤 Target's Info")
+    their_name = st.text_input("Their Full Name")
+    their_role = st.text_input("Their Title & Company")
+    their_summary = st.text_area("One-sentence summary of their profile or background")
+    admire_note = st.text_area("Anything you admire or want to reference")
 
-if st.button("Generate Message"):
-    prompt = f"""
-    Write a 100-word(hard limit) {outreach_type.lower()} outreach message.
+    submitted = st.form_submit_button("Generate Message")
+
+# ----------------------------
+# Prompt Builder
+# ----------------------------
+def build_prompt():
+    return f"""
+    Write a 100-word (hard limit) {outreach_type.lower()} outreach message.
 
     I am {your_name}, currently working as {your_role}. 
     I’m reaching out to {their_name}, {their_role}.
@@ -35,51 +43,93 @@ if st.button("Generate Message"):
     Make it warm, concise, and personalized. Note: Avoid the use of "--".
     """
 
-    headers = {
-        "Authorization": f"Bearer {st.secrets['OPENROUTER_API_KEY']}",
-        "HTTP-Referer": "https://outreach-gen.streamlit.app",
-        "X-Title": "Outreach Generator"
+# ----------------------------
+# Model Configs (API Info + Priority Order)
+# ----------------------------
+MODEL_CONFIGS = [
+    {
+        "name": "qwen/qwen3-4b:free",
+        "provider": "openrouter",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "api_key": st.secrets["OPENROUTER_API_KEY"],
+        "headers": {
+            "Authorization": f"Bearer {st.secrets['OPENROUTER_API_KEY']}",
+            "HTTP-Referer": "https://outreach-gen.streamlit.app",
+            "X-Title": "Outreach Generator"
+        }
+    },
+    {
+        "name": "llama3-8b-8192",
+        "provider": "groq",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "api_key": st.secrets["GROQ_API_KEY"],
+        "headers": {
+            "Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}",
+            "Content-Type": "application/json"
+        }
+    },
+    {
+        "name": "llama3-70b-8192",
+        "provider": "groq",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "api_key": st.secrets["GROQ_API_KEY"],
+        "headers": {
+            "Authorization": f"Bearer {st.secrets['GROQ_API_KEY']}",
+            "Content-Type": "application/json"
+        }
     }
+]
 
+# ----------------------------
+# Generalized Model Caller
+# ----------------------------
+def call_model(prompt, model_config):
     data = {
-        "model": "qwen/qwen3-4b:free",
+        "model": model_config["name"],
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
+        "temperature": 0.7
     }
+    response = requests.post(model_config["url"], headers=model_config["headers"], json=data)
+    response.raise_for_status()
+    return response.json()['choices'][0]['message']['content']
 
-    response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data)
+# ----------------------------
+# Message Generation
+# ----------------------------
+if submitted:
+    prompt = build_prompt()
 
-    try:
-        message = response.json()['choices'][0]['message']['content']
-        st.subheader("📬 Your Outreach Message")
-        st.success(message)
-    except Exception as e:
-        st.error("Something went wrong: " + str(e))
+    for model_config in MODEL_CONFIGS:
+        try:
+            message = call_model(prompt, model_config)
+            st.subheader(f"📬 Your Outreach Message (via {model_config['name']})")
+            st.success(message)
+            break
+        except Exception as e:
+            st.warning(f"Model {model_config['name']} failed: {str(e)}")
+    else:
+        st.error("AI model limit reached. Please try again later.")
 
+# ----------------------------
+# Google Sheets Visit Tracking
+# ----------------------------
+def track_visit():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets.to_dict(), scope)
+    sheet = gspread.authorize(creds).open("StreamlitVisits").sheet1
 
-# Load credentials
-scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-creds_dict = st.secrets.to_dict()
-creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
-client = gspread.authorize(creds)
+    visitor_id = st.session_state.get("visitor_id", str(uuid.uuid4()))
+    st.session_state.visitor_id = visitor_id
+    timestamp = datetime.utcnow().isoformat()
 
-# Open the sheet
-sheet = client.open("StreamlitVisits").sheet1
+    existing_ids = sheet.col_values(1)
+    if visitor_id not in existing_ids:
+        sheet.append_row([visitor_id, timestamp])
 
-# Track visitor
-if "visitor_id" not in st.session_state:
-    st.session_state.visitor_id = str(uuid.uuid4())
+    total_visits = len(existing_ids)
+    unique_users = len(set(existing_ids))
 
-visitor_id = st.session_state.visitor_id
-timestamp = datetime.utcnow().isoformat()
+    st.sidebar.markdown(f"🔁 Total Visits: **{total_visits}**")
+    st.sidebar.markdown(f"🧍 Unique Users: **{unique_users}**")
 
-# Check if this visitor already exists
-existing_ids = sheet.col_values(1)
-is_new_user = visitor_id not in existing_ids
-
-# Append visit
-sheet.append_row([visitor_id, timestamp])
-
-# Count unique users
-unique_users = len(set(sheet.col_values(1))) - 1  # subtract header
-total_visits = len(sheet.col_values(1)) - 1
+track_visit()
