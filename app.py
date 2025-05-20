@@ -102,11 +102,15 @@ if submitted:
     for model_config in MODEL_CONFIGS:
         try:
             message = call_model(prompt, model_config)
-            st.subheader(f"📬 Your Outreach Message (via {model_config['name']})")
+            st.subheader(f"📬 Your Customized Outreach Message")
             st.success(message)
             break
         except Exception as e:
-            st.warning(f"Model {model_config['name']} failed: {str(e)}")
+            code = e.response.status_code
+            if code == 429:
+                continue
+            else:
+                st.warning(f"AI model generation failed! Please try again later")
     else:
         st.error("AI model limit reached. Please try again later.")
 
