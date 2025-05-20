@@ -133,7 +133,4 @@ def track_visit():
     total_visits = len(existing_ids)
     unique_users = len(set(existing_ids))
 
-    st.sidebar.markdown(f"🔁 Total Visits: **{total_visits}**")
-    st.sidebar.markdown(f"🧍 Unique Users: **{unique_users}**")
-
 track_visit()
