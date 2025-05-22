@@ -3,6 +3,7 @@ import requests
 import gspread
 import uuid
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from oauth2client.service_account import ServiceAccountCredentials
 
 st.title("Email/LinkedIn Outreach Message Generator")
@@ -52,6 +53,7 @@ MODEL_CONFIGS = [
         "provider": "openrouter",
         "url": "https://openrouter.ai/api/v1/chat/completions",
         "api_key": st.secrets["OPENROUTER_API_KEY"],
+        "max_tokens": 1500,
         "headers": {
             "Authorization": f"Bearer {st.secrets['OPENROUTER_API_KEY']}",
             "HTTP-Referer": "https://outreach-gen.streamlit.app",
@@ -89,6 +91,9 @@ def call_model(prompt, model_config):
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.7
     }
+    if "max_tokens" in model_config:
+        data["max_tokens"] = model_config["max_tokens"]
+
     response = requests.post(model_config["url"], headers=model_config["headers"], json=data)
     response.raise_for_status()
     return response.json()['choices'][0]['message']['content']
@@ -110,7 +115,7 @@ if submitted:
             if code == 429:
                 continue
             else:
-                st.warning(f"AI model generation failed! Please try again later")
+                print(f"Model {model_config['name']} failed with {code}: {e.response.text}")
     else:
         st.error("AI model limit reached. Please try again later.")
 
@@ -119,12 +124,19 @@ if submitted:
 # ----------------------------
 def track_visit():
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets.to_dict(), scope)
+    
+    if st.secrets.get("type") == "service_account":
+        # Running on Streamlit Cloud (using secrets)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets.to_dict(), scope)
+    else:
+        # Running locally (use .json file)
+        creds = ServiceAccountCredentials.from_json_keyfile_name(".streamlit/google-credentials.json", scope)
+
     sheet = gspread.authorize(creds).open("StreamlitVisits").sheet1
 
     visitor_id = st.session_state.get("visitor_id", str(uuid.uuid4()))
     st.session_state.visitor_id = visitor_id
-    timestamp = datetime.utcnow().isoformat()
+    timestamp = datetime.now(ZoneInfo("Asia/Kolkata")).isoformat()
 
     existing_ids = sheet.col_values(1)
     if visitor_id not in existing_ids:
